@@ -15,14 +15,8 @@ class DirToXML
 
     a = Dir.glob("*").sort
     command = a.include?('dir.xml') ? 'run' : 'new_run'      
-    @doc, @status = self.send command, a
+    doc, @status = self.send command, a
   end
-  
-  def to_xml
-    @doc.to_s
-  end      
-  
-  private
       
   def new_element(name, text=nil)
     new_node = Element.new(name)
