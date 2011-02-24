@@ -3,6 +3,7 @@
 # file: dir-to-xml.rb
 
 require 'rexml/document'
+require 'dynarex'
 
 class DirToXML
   #include PrettyXML
@@ -11,12 +12,26 @@ class DirToXML
   attr_reader :status
 
   def initialize(path= '.')
+    super()
+    old_path = Dir.pwd
     Dir.chdir  path
 
     a = Dir.glob("*").sort
     command = a.include?('dir.xml') ? 'run' : 'new_run'      
-    doc, @status = self.send command, a
+
+    @doc, @status = self.send command, a
+    Dir.chdir old_path #File.expand_path('~')
   end
+  
+  def to_xml
+    @doc.to_s
+  end
+  
+  def to_dynarex
+    Dynarex.new @doc.to_s
+  end
+  
+  private
       
   def new_element(name, text=nil)
     new_node = Element.new(name)
