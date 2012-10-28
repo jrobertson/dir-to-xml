@@ -1,8 +1,7 @@
-#!/usr/bin/ruby
+#!/usr/bin/env ruby
 
 # file: dir-to-xml.rb
 
-require 'rexle'
 require 'dynarex'
 
 class DirToXML
@@ -101,9 +100,17 @@ summary = "
   def run(a)
 
     doc = Rexle.new(File.open('dir.xml','r').read)   
+    
+    doc.root.xpath('records/file').each do |x|    
+      x.element('last_modified').text = File.mtime x.text('name')
+    end
+    
     a_dir = doc.root.xpath('records/file/name/text()').sort
-
-    return [doc, "nothing new"] if a == a_dir
+    
+    if a == a_dir then
+      File.open('dir.xml','w'){|f| doc.write f}
+      return [doc, "nothing new"]
+    end
 
     # files to add
     files_to_insert = a - a_dir

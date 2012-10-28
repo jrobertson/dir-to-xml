@@ -24,7 +24,7 @@ class DirToXML
   end
   
   def select_by_ext(ext)
-    @object = @h.select{|x| x[:ext] == ext}
+    @object = @h.select{|x| x[:ext][/#{ext}/]}
     self
   end
   
