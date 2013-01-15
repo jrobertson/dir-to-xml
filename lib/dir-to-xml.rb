@@ -33,6 +33,10 @@ class DirToXML
     proc1.call(@object)
   end
   
+  def to_h
+    @h
+  end
+  
   def to_xml
     @doc.to_s
   end
