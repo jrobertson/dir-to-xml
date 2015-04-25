@@ -28,13 +28,20 @@ class DirToXML
   end
   
   def sort_by(sym)
-    procs = [[:last_modified, lambda{|obj| obj.sort_by{|x| x[:last_modified]}}]]
+    procs = [[:last_modified, lambda{|obj| obj\
+                                     .sort_by{|x| x[:last_modified]}}]]
     proc1 = procs.assoc(sym).last
     proc1.call(@object)
   end
   
+  def sort_by_last_modified()
+    sort_by :last_modified
+  end
+  
+  alias sort_by_lastmodified sort_by_last_modified
+  
   def to_h
-    @h
+    @object || @h
   end
   
   def to_xml
@@ -69,8 +76,10 @@ class DirToXML
   end
 
   def add_files(doc, a)
+    
     dir_files = a.map do |x| 
-      [x, File.extname(x), File::ftype(x), File::ctime(x), File::mtime(x), File::atime(x)]
+      [x, File.extname(x), File::ftype(x), File::ctime(x), \
+                                            File::mtime(x), File::atime(x)]
     end
 
     records = doc.root.element('records')
@@ -88,7 +97,9 @@ summary = "
   <title>Index of #{File.basename(Dir.pwd)}</title>
   <file_path>#{File.dirname(Dir.pwd)}</file_path>
   <recordx_type>dynarex</recordx_type>
-  <schema>directory[title,file_path]/file(name, type, ext, created, last_modified, last_accessed, description, owner, group, permissions)</schema>
+  <schema>directory[title,file_path]/file(name, type, ext, created, "
+   + "last_modified, last_accessed, description, owner, group, permissions)"
+   + "</schema>
 </summary>"
 
     buffer = "<directory>%s<records/></directory>" % summary
