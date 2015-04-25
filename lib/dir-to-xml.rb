@@ -15,8 +15,10 @@ class DirToXML
     Dir.chdir  path
 
     a = Dir.glob("*").sort
+
     command = a.include?('dir.xml') ? 'run' : 'new_run'      
     @doc, @status = self.send command, a
+
     Dir.chdir old_path #File.expand_path('~')
     @h = self.to_dynarex.to_h
     @object = @h
@@ -84,6 +86,7 @@ class DirToXML
 
     records = doc.root.element('records')
     i = '0'
+
     dir_files.each do |name, ext, type, ctime, mtime, atime|       
       records.add_element new_file(name, type, ext, ctime, mtime, atime)
       i.succ!
@@ -97,10 +100,9 @@ summary = "
   <title>Index of #{File.basename(Dir.pwd)}</title>
   <file_path>#{File.dirname(Dir.pwd)}</file_path>
   <recordx_type>dynarex</recordx_type>
-  <schema>directory[title,file_path]/file(name, type, ext, created, "
-   + "last_modified, last_accessed, description, owner, group, permissions)"
-   + "</schema>
-</summary>"
+  <schema>directory[title,file_path]/file(name, type, ext, created, " \
+   + "last_modified, last_accessed, description, owner, group, permissions)" \
+   + "</schema>\n</summary>"
 
     buffer = "<directory>%s<records/></directory>" % summary
     doc = Rexle.new(buffer)
