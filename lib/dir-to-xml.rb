@@ -46,6 +46,48 @@ class DirToXML
     @object || @h
   end
   
+class DirToXML
+
+  attr_reader :status
+
+  def initialize(path= '.')
+    super()
+    old_path = Dir.pwd
+    raise "Directory not found." unless File.exists? path
+    Dir.chdir  path
+
+    a = Dir.glob("*").sort
+
+    command = a.include?('dir.xml') ? 'run' : 'new_run'      
+    @doc, @status = self.send command, a
+
+    Dir.chdir old_path #File.expand_path('~')
+    @h = self.to_dynarex.to_h
+    @object = @h
+  end
+  
+  def select_by_ext(ext)
+    @object = @h.select{|x| x[:ext][/#{ext}/]}
+    self
+  end
+  
+  def sort_by(sym)
+    procs = [[:last_modified, lambda{|obj| obj\
+                                     .sort_by{|x| x[:last_modified]}}]]
+    proc1 = procs.assoc(sym).last
+    proc1.call(@object)
+  end
+  
+  def sort_by_last_modified()
+    sort_by :last_modified
+  end
+  
+  alias sort_by_lastmodified sort_by_last_modified
+  
+  def to_h
+    @object || @h
+  end
+  
   def to_xml
     @doc.to_s
   end
@@ -119,7 +161,7 @@ summary = "
     doc = Rexle.new(File.open('dir.xml','r').read)   
     
     doc.root.xpath('records/file').each do |x|    
-      x.element('last_modified').text = File.mtime x.text('name')
+      x.element('last_modified').text = File.mtime x.text('name') if File.exists?(x.text('name'))
     end
     
     a_dir = doc.root.xpath('records/file/name/text()').sort
@@ -132,15 +174,16 @@ summary = "
     # files to add
     files_to_insert = a - a_dir
     add_files(doc, files_to_insert)
-
+    
     # files to delete
     files_to_delete = a_dir - a
+
     files_to_delete.each do |filename|
       node = doc.root.element("records/file[name='#{filename}']")
       node.delete
     end
 
-    File.open('dir.xml','w'){|f| doc.write f}
+    File.write 'dir.xml', doc.xml(pretty: true)
     [doc, "updated"]
   end
 end
