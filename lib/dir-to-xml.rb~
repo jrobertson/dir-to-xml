@@ -24,6 +24,11 @@ class DirToXML
     @object = @h
   end
   
+  def filter(pattern=/.*/)
+    @object = @h.select {|x| x[:name] =~ pattern }
+    self
+  end
+  
   def select_by_ext(ext)
     @object = @h.select{|x| x[:ext][/#{ext}/]}
     self
@@ -119,7 +124,7 @@ summary = "
     doc = Rexle.new(File.open('dir.xml','r').read)   
     
     doc.root.xpath('records/file').each do |x|    
-      x.element('last_modified').text = File.mtime x.text('name')
+      x.element('last_modified').text = File.mtime x.text('name') if File.exists?(x.text('name'))
     end
     
     a_dir = doc.root.xpath('records/file/name/text()').sort
@@ -132,15 +137,16 @@ summary = "
     # files to add
     files_to_insert = a - a_dir
     add_files(doc, files_to_insert)
-
+    
     # files to delete
     files_to_delete = a_dir - a
+
     files_to_delete.each do |filename|
       node = doc.root.element("records/file[name='#{filename}']")
       node.delete
     end
 
-    File.open('dir.xml','w'){|f| doc.write f}
+    File.write 'dir.xml', doc.xml(pretty: true)
     [doc, "updated"]
   end
 end

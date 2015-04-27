@@ -24,46 +24,9 @@ class DirToXML
     @object = @h
   end
   
-  def select_by_ext(ext)
-    @object = @h.select{|x| x[:ext][/#{ext}/]}
+  def filter(pattern=/.*/)
+    @object = @h.select {|x| x[:name] =~ pattern }
     self
-  end
-  
-  def sort_by(sym)
-    procs = [[:last_modified, lambda{|obj| obj\
-                                     .sort_by{|x| x[:last_modified]}}]]
-    proc1 = procs.assoc(sym).last
-    proc1.call(@object)
-  end
-  
-  def sort_by_last_modified()
-    sort_by :last_modified
-  end
-  
-  alias sort_by_lastmodified sort_by_last_modified
-  
-  def to_h
-    @object || @h
-  end
-  
-class DirToXML
-
-  attr_reader :status
-
-  def initialize(path= '.')
-    super()
-    old_path = Dir.pwd
-    raise "Directory not found." unless File.exists? path
-    Dir.chdir  path
-
-    a = Dir.glob("*").sort
-
-    command = a.include?('dir.xml') ? 'run' : 'new_run'      
-    @doc, @status = self.send command, a
-
-    Dir.chdir old_path #File.expand_path('~')
-    @h = self.to_dynarex.to_h
-    @object = @h
   end
   
   def select_by_ext(ext)
