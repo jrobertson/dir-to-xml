@@ -24,6 +24,7 @@ class DirToXML
     @h = self.to_dynarex.to_h
     @object = @h
     
+    @path = path
     @recursive = recursive
     
   end
@@ -40,8 +41,8 @@ class DirToXML
     
     lm =  a2[-1]
     
-    if @recursive and lm[:type] = 'directory' then
-      return [lm, DirToXML.new(lm[:name]).last_modified]
+    if @recursive and lm[:type] == 'directory' then
+      return [lm, DirToXML.new(File.join(@path,  lm[:name])).last_modified]
     else
       lm
     end
