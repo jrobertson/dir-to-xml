@@ -8,8 +8,9 @@ class DirToXML
 
   attr_reader :status
 
-  def initialize(path= '.')
+  def initialize(path= '.', recursive: false)
     super()
+        
     old_path = Dir.pwd
     raise "Directory not found." unless File.exists? path
     Dir.chdir  path
@@ -22,6 +23,9 @@ class DirToXML
     Dir.chdir old_path #File.expand_path('~')
     @h = self.to_dynarex.to_h
     @object = @h
+    
+    @recursive = recursive
+    
   end
   
   def filter(pattern=/.*/)
@@ -29,8 +33,23 @@ class DirToXML
     self
   end
   
+  def last_modified()
+    a = sort_by :last_modified
+    a2 = a.reject {|x| x[:name] == 'dir.xml'}
+    
+    
+    lm =  a2[-1]
+    
+    if @recursive and lm[:type] = 'directory' then
+      return [lm, DirToXML.new(lm[:name]).last_modified]
+    else
+      lm
+    end
+  end
+  
   def select_by_ext(ext)
-    @object = @h.select{|x| x[:ext][/#{ext}/]}
+    
+    @object = ext != '*' ? @h.select{|x| x[:ext][/#{ext}/]} : @h
     self
   end
   
