@@ -34,10 +34,14 @@ class DirToXML
     self
   end
   
-  def last_modified()
-    a = sort_by :last_modified
-    a2 = a.reject {|x| x[:name] == 'dir.xml'}
+  def last_modified(ext=nil)
     
+    if ext and ext != '*' then
+      @object = @h.select{|x| x[:ext][/#{ext}/] or x[:type] == 'directory'}
+    end
+    
+    a = sort_by :last_modified
+    a2 = a.reject {|x| x[:name] == 'dir.xml'}    
     
     lm =  a2[-1]
     
