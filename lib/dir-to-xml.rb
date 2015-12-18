@@ -9,8 +9,11 @@ class DirToXML
 
 
   def initialize(path= '.', recursive: false)
+    
     super()
-        
+    
+    @path = path
+    
     old_path = Dir.pwd
     raise "Directory not found." unless File.exists? path
     Dir.chdir  path
@@ -24,9 +27,9 @@ class DirToXML
         name: x,
         type: File::ftype(x),
         ext: File.extname(x),
-        created: File::ctime(x),
-        last_modified: File::mtime(x),
-        last_accessed: File::atime(x)
+        ctime: File::ctime(x),
+        mtime: File::mtime(x),
+        atime: File::atime(x)
       }
 
     end    
@@ -50,13 +53,19 @@ class DirToXML
     self
   end
   
+  def find_by_filename(s)
+    @dx.all.find {|item| item.name == s}
+  end
+  
+  alias find_by_file find_by_filename
+  
   def last_modified(ext=nil)
     
     if ext and ext != '*' then
       @object = @h.select{|x| x[:ext][/#{ext}/] or x[:type] == 'directory'}
     end
     
-    a = sort_by :last_modified
+    a = sort_by :mtime
     a2 = a.reject {|x| x[:name] == 'dir.xml'}    
     
     lm =  a2[-1]
@@ -68,6 +77,10 @@ class DirToXML
     end
   end
   
+  def save()
+    @dx.save File.join(@path, 'dir.xml')
+  end
+  
   def select_by_ext(ext)
     
     @object = ext != '*' ? @h.select{|x| x[:ext][/#{ext}/]} : @h
@@ -75,14 +88,13 @@ class DirToXML
   end
   
   def sort_by(sym)
-    procs = [[:last_modified, lambda{|obj| obj\
-                                     .sort_by{|x| x[:last_modified]}}]]
+    procs = [[:mtime, lambda{|obj| obj.sort_by{|x| x[:mtime]}}]]
     proc1 = procs.assoc(sym).last
     proc1.call(@object)
   end
   
   def sort_by_last_modified()
-    sort_by :last_modified
+    sort_by :mtime
   end
   
   alias sort_by_lastmodified sort_by_last_modified
@@ -104,8 +116,8 @@ class DirToXML
   def dxify(a)
     
     dx = Dynarex.new 'directory[title,file_path]/file(name, ' + \
-            'type, ext, created, last_modified, last_accessed,' + \
-                            ' description, owner, group, permissions)'
+            'type, ext, ctime, mtime, atime, description, owner, ' + \
+                                                      'group, permissions)'
 
     dx.title = 'Index of ' + File.basename(Dir.pwd)
     dx.file_path = Dir.pwd
