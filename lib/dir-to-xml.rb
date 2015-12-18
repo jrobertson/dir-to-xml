@@ -4,9 +4,9 @@
 
 require 'dynarex'
 
+
 class DirToXML
 
-  attr_reader :status
 
   def initialize(path= '.', recursive: false)
     super()
@@ -16,17 +16,33 @@ class DirToXML
     Dir.chdir  path
 
     a = Dir.glob("*").sort
+    a.delete 'dir.xml'
+    
+    a2 = a.inject([]) do |r, x|
 
-    command = a.include?('dir.xml') ? 'run' : 'new_run'      
-    @doc, @status = self.send command, a
+      r << {
+        name: x,
+        type: File::ftype(x),
+        ext: File.extname(x),
+        created: File::ctime(x),
+        last_modified: File::mtime(x),
+        last_accessed: File::atime(x)
+      }
 
-    Dir.chdir old_path #File.expand_path('~')
-    @h = self.to_dynarex.to_h
+    end    
+
+    command = File.exists?('dir.xml') ? :refresh : :dxify
+    
+    @dx  = self.method(command).call a2
+
+    Dir.chdir old_path 
+
+    @h = @dx.to_h
     @object = @h
     
     @path = path
     @recursive = recursive
-    
+
   end
   
   def filter(pattern=/.*/)
@@ -75,102 +91,45 @@ class DirToXML
     @object || @h
   end
   
-  def to_xml
-    @doc.to_s
+  def to_xml(options=nil)
+    @dx.to_xml options
   end
   
   def to_dynarex
-    Dynarex.new @doc.to_s
+    @dx.clone
   end
   
   private
       
-  def new_element(name, text=nil)
-    new_node = Rexle::Element.new(name)
-    new_node.text = text if text
-    new_node
+  def dxify(a)
+    
+    dx = Dynarex.new 'directory[title,file_path]/file(name, ' + \
+            'type, ext, created, last_modified, last_accessed,' + \
+                            ' description, owner, group, permissions)'
+
+    dx.title = 'Index of ' + File.basename(Dir.pwd)
+    dx.file_path = Dir.pwd
+
+    dx.import a
+    dx.save 'dir.xml'
+    
+    return dx
+
   end
 
-  def new_file(name, type, ext, ctime, mtime, atime)
-    node = Rexle::Element.new('file')
-    node.add_element new_element('name', name)
-    node.add_element new_element('type', type)
-    node.add_element new_element('ext', ext)
-    node.add_element new_element('created', ctime)
-    node.add_element new_element('last_modified', mtime)
-    node.add_element new_element('last_accessed', atime)
-    node.add_element new_element('description')
-    node.add_element new_element('owner')
-    node.add_element new_element('group')
-    node.add_element new_element('permissions')
-    node
+  def refresh(cur_files)
+
+    dx = Dynarex.new 'dir.xml'
+
+    prev_files = dx.to_a
+            
+    cur_files.each do |x|
+      file = prev_files.find {|item| item[:name] == x[:name] }
+      x[:description] = file[:description] if file and file[:description]
+    end
+
+    dxify(cur_files)
+    
   end
-
-  def add_files(doc, a)
-    
-    dir_files = a.map do |x| 
-      [x, File.extname(x), File::ftype(x), File::ctime(x), \
-                                            File::mtime(x), File::atime(x)]
-    end
-
-    records = doc.root.element('records')
-    i = '0'
-
-    dir_files.each do |name, ext, type, ctime, mtime, atime|       
-      records.add_element new_file(name, type, ext, ctime, mtime, atime)
-      i.succ!
-    end
-  end
-
-  def new_run(a)
-
-summary = "
-<summary>
-  <title>Index of #{File.basename(Dir.pwd)}</title>
-  <file_path>#{File.dirname(Dir.pwd)}</file_path>
-  <recordx_type>dynarex</recordx_type>
-  <schema>directory[title,file_path]/file(name, type, ext, created, " \
-   + "last_modified, last_accessed, description, owner, group, permissions)" \
-   + "</schema>\n</summary>"
-
-    buffer = "<directory>%s<records/></directory>" % summary
-    doc = Rexle.new(buffer)
-    add_files(doc, a)
-
-    doc.root.element('records').add_element new_file(name='dir.xml', type=nil, ext='.xml', *[Time.now] * 3)
-
-    File.open('dir.xml','w'){|f| f.write doc.xml pretty: false}
-    [doc, "created"]
-  end
-
-  def run(a)
-
-    doc = Rexle.new(File.open('dir.xml','r').read)   
-    
-    doc.root.xpath('records/file').each do |x|    
-      x.element('last_modified').text = File.mtime x.text('name') if File.exists?(x.text('name'))
-    end
-    
-    a_dir = doc.root.xpath('records/file/name/text()').sort
-    
-    if a == a_dir then
-      File.open('dir.xml','w'){|f| doc.write f}
-      return [doc, "nothing new"]
-    end
-
-    # files to add
-    files_to_insert = a - a_dir
-    add_files(doc, files_to_insert)
-    
-    # files to delete
-    files_to_delete = a_dir - a
-
-    files_to_delete.each do |filename|
-      node = doc.root.element("records/file[name='#{filename}']")
-      node.delete
-    end
-
-    File.write 'dir.xml', doc.xml(pretty: true)
-    [doc, "updated"]
-  end
+  
 end

@@ -1,10 +1,10 @@
 Gem::Specification.new do |s|
   s.name = 'dir-to-xml'
-  s.version = '0.6.2'
+  s.version = '0.7.0'
   s.summary = 'Dir-to-xml saves a directory listing in the Dynarex XML format'
   s.authors = ['James Robertson']
   s.files = Dir['lib/dir-to-xml.rb']
-  s.add_runtime_dependency('dynarex', '~> 1.5', '>=1.5.33') 
+  s.add_runtime_dependency('dynarex', '~> 1.6', '>=1.6.2') 
   s.signing_key = '../privatekeys/dir-to-xml.pem'
   s.cert_chain  = ['gem-public_cert.pem']
   s.license = 'MIT'
