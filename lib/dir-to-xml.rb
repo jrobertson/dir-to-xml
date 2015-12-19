@@ -17,13 +17,15 @@ class DirToXML
     raise "Directory not found." unless File.exists? path
 
     a = Dir.glob(File.join(path, "*")).map{|x| File.basename(x) }.sort
-    
+
     a.delete index
     
-    a2 = a.inject([]) do |r, x|
+    a2 = a.inject([]) do |r, filename|
 
+      x = File.join(path, filename)
+      
       r << {
-        name: x,
+        name: filename,
         type: File::ftype(x),
         ext: File.extname(x),
         ctime: File::ctime(x),
@@ -116,7 +118,8 @@ class DirToXML
     dx.file_path = Dir.pwd
 
     dx.import a
-    dx.save @index
+
+    dx.save File.join(@path, @index)
     
     return dx
 

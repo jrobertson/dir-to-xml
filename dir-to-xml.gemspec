@@ -1,6 +1,6 @@
 Gem::Specification.new do |s|
   s.name = 'dir-to-xml'
-  s.version = '0.7.2'
+  s.version = '0.7.3'
   s.summary = 'Dir-to-xml saves a directory listing in the Dynarex XML format'
   s.authors = ['James Robertson']
   s.files = Dir['lib/dir-to-xml.rb']
