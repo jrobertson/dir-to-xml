@@ -8,18 +8,17 @@ require 'dynarex'
 class DirToXML
 
 
-  def initialize(path= '.', recursive: false)
+  def initialize(path= '.', recursive: false, index: 'dir.xml')
     
     super()
     
-    @path = path
+    @path, @index, @recursive = path, index, recursive
     
-    old_path = Dir.pwd
     raise "Directory not found." unless File.exists? path
-    Dir.chdir  path
 
-    a = Dir.glob("*").sort
-    a.delete 'dir.xml'
+    a = Dir.glob(File.join(path, "*")).map{|x| File.basename(x) }.sort
+    
+    a.delete index
     
     a2 = a.inject([]) do |r, x|
 
@@ -34,17 +33,12 @@ class DirToXML
 
     end    
 
-    command = File.exists?('dir.xml') ? :refresh : :dxify
+    command = File.exists?(index) ? :refresh : :dxify
     
     @dx  = self.method(command).call a2
-
-    Dir.chdir old_path 
-
-    @h = @dx.to_h
-    @object = @h
     
-    @path = path
-    @recursive = recursive
+    @h = @dx.to_h
+    @object = @h    
 
   end
   
@@ -66,9 +60,8 @@ class DirToXML
     end
     
     a = sort_by :mtime
-    a2 = a.reject {|x| x[:name] == 'dir.xml'}    
     
-    lm =  a2[-1]
+    lm =  a[-1]
     
     if @recursive and lm[:type] == 'directory' then
       return [lm, DirToXML.new(File.join(@path,  lm[:name])).last_modified]
@@ -78,7 +71,7 @@ class DirToXML
   end
   
   def save()
-    @dx.save File.join(@path, 'dir.xml')
+    @dx.save File.join(@path, @index)
   end
   
   def select_by_ext(ext)
@@ -123,7 +116,7 @@ class DirToXML
     dx.file_path = Dir.pwd
 
     dx.import a
-    dx.save 'dir.xml'
+    dx.save @index
     
     return dx
 
@@ -131,7 +124,7 @@ class DirToXML
 
   def refresh(cur_files)
 
-    dx = Dynarex.new 'dir.xml'
+    dx = Dynarex.new @index
 
     prev_files = dx.to_a
             
