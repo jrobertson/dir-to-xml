@@ -7,7 +7,8 @@ require 'dynarex'
 
 class DirToXML
 
-
+  attr_reader :dx
+  
   def initialize(path= '.', recursive: false, index: 'dir.xml')
     
     super()
@@ -35,20 +36,27 @@ class DirToXML
 
     end    
 
-    command = File.exists?(index) ? :refresh : :dxify
+    command = File.exists?(File.join(path, index)) ? :refresh : :dxify
     
     @dx  = self.method(command).call a2
     
-    @h = @dx.to_h
-    @object = @h    
+    @a = @dx.to_a    
+    @object = @a
 
   end
   
-  def filter(pattern=/.*/)
-    @object = @h.select {|x| x[:name] =~ pattern }
+  def filter_by(pattern=/.*/, type: nil)
+    
+    @object = @a.select do |x| 
+            
+      pattern_match = x[:name] =~ pattern
+      type_match = type ? x[:type] == type.to_s : true
+
+    end
+    
     self
   end
-  
+    
   def find_by_filename(s)
     @dx.all.find {|item| item.name == s}
   end
@@ -58,7 +66,7 @@ class DirToXML
   def last_modified(ext=nil)
     
     if ext and ext != '*' then
-      @object = @h.select{|x| x[:ext][/#{ext}/] or x[:type] == 'directory'}
+      @object = @a.select{|x| x[:ext][/#{ext}/] or x[:type] == 'directory'}
     end
     
     a = sort_by :mtime
@@ -78,7 +86,7 @@ class DirToXML
   
   def select_by_ext(ext)
     
-    @object = ext != '*' ? @h.select{|x| x[:ext][/#{ext}/]} : @h
+    @object = ext != '*' ? @a.select{|x| x[:ext][/#{ext}/]} : @a
     self
   end
   
@@ -94,8 +102,12 @@ class DirToXML
   
   alias sort_by_lastmodified sort_by_last_modified
   
-  def to_h
-    @object || @h
+  def to_a
+    @object || @a
+  end
+  
+  def to_h()
+    self.to_a.inject({}){|r,x| r.merge(x[:name] => x)}
   end
   
   def to_xml(options=nil)
@@ -120,19 +132,21 @@ class DirToXML
     dx.import a
 
     dx.save File.join(@path, @index)
-    
+
     return dx
 
   end
 
   def refresh(cur_files)
 
-    dx = Dynarex.new @index
+    dx = Dynarex.new File.join(@path, @index)
 
     prev_files = dx.to_a
             
     cur_files.each do |x|
+
       file = prev_files.find {|item| item[:name] == x[:name] }
+
       x[:description] = file[:description] if file and file[:description]
     end
 
