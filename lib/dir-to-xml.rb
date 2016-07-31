@@ -9,9 +9,20 @@ class DirToXML
 
   attr_reader :dx
   
-  def initialize(path= '.', recursive: false, index: 'dir.xml')
+  def initialize(x= '.', recursive: false, index: 'dir.xml')
     
     super()
+    
+    if x.is_a? Dynarex then
+      
+      @dx = x      
+      @a = @dx.to_a    
+      @object = @a      
+      
+      return self
+    end
+    
+    path = x
     
     @path, @index, @recursive = path, index, recursive
     
@@ -87,7 +98,9 @@ class DirToXML
   def select_by_ext(ext)
     
     @object = ext != '*' ? @a.select{|x| x[:ext][/#{ext}/]} : @a
-    self
+    dx = Dynarex.new json_out: false
+    dx.import @object
+    DirToXML.new(dx)
   end
   
   def sort_by(sym)
@@ -122,9 +135,9 @@ class DirToXML
       
   def dxify(a)
     
-    dx = Dynarex.new 'directory[title,file_path]/file(name, ' + \
+    dx = Dynarex.new('directory[title,file_path]/file(name, ' + \
             'type, ext, ctime, mtime, atime, description, owner, ' + \
-                                                      'group, permissions)'
+                                        'group, permissions)', json_out: false)
 
     dx.title = 'Index of ' + File.basename(Dir.pwd)
     dx.file_path = Dir.pwd
@@ -139,7 +152,7 @@ class DirToXML
 
   def refresh(cur_files)
 
-    dx = Dynarex.new File.join(@path, @index)
+    dx = Dynarex.new(File.join(@path, @index), json_out: false)
 
     prev_files = dx.to_a
             
