@@ -36,6 +36,7 @@ class DirToXML
 
       x = File.join(path, filename)
       
+      begin
       r << {
         name: filename,
         type: File::ftype(x),
@@ -44,6 +45,9 @@ class DirToXML
         mtime: File::mtime(x),
         atime: File::atime(x)
       }
+      rescue
+        r
+      end
 
     end    
 
