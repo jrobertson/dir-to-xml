@@ -60,6 +60,10 @@ class DirToXML
 
   end
   
+  def filter(&blk)
+    @dx.filter &blk
+  end
+  
   def filter_by(pattern=/.*/, type: nil)
     
     @object = @a.select do |x| 
