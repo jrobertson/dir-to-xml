@@ -10,7 +10,7 @@ class DirToXML
   attr_reader :dx
   
   def initialize(x= '.', recursive: false, index: 'dir.xml')
-    
+
     super()
     
     if x.is_a? Dynarex then
@@ -31,7 +31,7 @@ class DirToXML
     a = Dir.glob(File.join(path, "*")).map{|x| File.basename(x) }.sort
 
     a.delete index
-    
+
     a2 = a.inject([]) do |r, filename|
 
       x = File.join(path, filename)
@@ -52,11 +52,19 @@ class DirToXML
     end    
 
     command = File.exists?(File.join(path, index)) ? :refresh : :dxify
-    
+
     @dx  = self.method(command).call a2
     
     @a = @dx.to_a    
     @object = @a
+    
+    if recursive then
+
+      self.filter_by(type: :directory).to_a.each do |x|
+        path2 = File.join(path, x[:name])
+        dtx = DirToXML.new(path2, recursive: true)
+      end
+    end
 
   end
   
@@ -83,7 +91,7 @@ class DirToXML
   alias find_by_file find_by_filename
   
   def last_modified(ext=nil)
-    
+
     if ext and ext != '*' then
       @object = @a.select{|x| x[:ext][/#{ext}/] or x[:type] == 'directory'}
     end
@@ -147,8 +155,8 @@ class DirToXML
             'type, ext, ctime, mtime, atime, description, owner, ' + \
                                         'group, permissions)', json_out: false)
 
-    dx.title = 'Index of ' + File.basename(Dir.pwd)
-    dx.file_path = Dir.pwd
+    dx.title = 'Index of ' + @path
+    dx.file_path = @path
 
     dx.import a
 
