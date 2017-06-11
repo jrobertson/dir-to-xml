@@ -56,15 +56,17 @@ class DirToXML
     @dx  = self.method(command).call a2
     
     @a = @dx.to_a    
-    @object = @a
     
     if recursive then
 
       self.filter_by(type: :directory).to_a.each do |x|
+
         path2 = File.join(path, x[:name])
-        dtx = DirToXML.new(path2, recursive: true)
+        DirToXML.new(path2, recursive: true)
       end
     end
+    
+    @object = @a
 
   end
   
@@ -97,7 +99,7 @@ class DirToXML
     end
     
     a = sort_by :mtime
-    
+
     lm =  a[-1]
     
     if @recursive and lm[:type] == 'directory' then
