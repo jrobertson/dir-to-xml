@@ -153,12 +153,12 @@ class DirToXML
       
   def dxify(a)
     
-    dx = Dynarex.new('directory[title,file_path]/file(name, ' + \
+    dx = Dynarex.new('directory[title, file_path, description]/file(name, ' + \
             'type, ext, ctime, mtime, atime, description, owner, ' + \
                                         'group, permissions)', json_out: false)
 
-    dx.title = 'Index of ' + @path
-    dx.file_path = @path
+    dx.title = 'Index of ' + File.expand_path(@path)
+    dx.file_path = File.expand_path(@path)
 
     dx.import a
 
