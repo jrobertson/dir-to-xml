@@ -74,12 +74,16 @@ class DirToXML
     @dx.filter &blk
   end
   
-  def filter_by(pattern=/.*/, type: nil)
+  def filter_by(pattern=/.*/, type: nil, ext: nil)
     
     @object = @a.select do |x| 
             
       pattern_match = x[:name] =~ pattern
+      
       type_match = type ? x[:type] == type.to_s : true
+      ext_match = ext ? x[:ext] == ext.to_s : true
+      
+      pattern_match and type_match and ext_match
 
     end
     
@@ -148,6 +152,8 @@ class DirToXML
   def to_dynarex
     @dx.clone
   end
+  
+  alias to_dx to_dynarex
   
   private
       
