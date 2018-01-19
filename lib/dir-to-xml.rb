@@ -82,11 +82,11 @@ class DirToXML
       
       type_match = type ? x[:type] == type.to_s : true
       ext_match = ext ? x[:ext] == ext.to_s : true
-      
+
       pattern_match and type_match and ext_match
 
     end
-    
+
     self
   end
     
@@ -120,6 +120,8 @@ class DirToXML
   def select_by_ext(ext)
     
     @object = ext != '*' ? @a.select{|x| x[:ext][/#{ext}/]} : @a
+    return if @object.empty?
+    
     dx = Dynarex.new json_out: false
     dx.import @object
     DirToXML.new(dx)
