@@ -117,14 +117,15 @@ class DirToXML
     @dx.save File.join(@path, @index)
   end
   
-  def select_by_ext(ext)
+  def select_by_ext(ext, &blk)
     
-    @object = ext != '*' ? @a.select{|x| x[:ext][/#{ext}/]} : @a
+    @object = ext != '*' ? @a.select{|x| x[:ext][/#{ext}$/]} : @a
     return if @object.empty?
     
     dx = Dynarex.new json_out: false
     dx.import @object
-    DirToXML.new(dx)
+    dtx = DirToXML.new(dx)
+    block_given? ? dtx.dx.all.map(&:name).each(&blk) : dtx
   end
   
   def sort_by(sym)
