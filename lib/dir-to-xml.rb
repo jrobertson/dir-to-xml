@@ -2,18 +2,20 @@
 
 # file: dir-to-xml.rb
 
-require 'dynarex'
+require 'dxlite'
 
 
 class DirToXML
 
   attr_reader :dx
   
-  def initialize(x= '.', recursive: false, index: 'dir.xml')
-
+  def initialize(x= '.', recursive: false, index: 'dir.xml', debug: false)
+    
     super()
     
-    if x.is_a? Dynarex then
+    @debug = debug
+    
+    if x.is_a? DxLite then
       
       @dx = x      
       @a = @dx.to_a    
@@ -122,7 +124,7 @@ class DirToXML
     @object = ext != '*' ? @a.select{|x| x[:ext][/#{ext}$/]} : @a
     return if @object.empty?
     
-    dx = Dynarex.new json_out: false
+    dx = DxLite.new
     dx.import @object
     dtx = DirToXML.new(dx)
     block_given? ? dtx.dx.all.map(&:name).each(&blk) : dtx
@@ -162,9 +164,9 @@ class DirToXML
       
   def dxify(a)
     
-    dx = Dynarex.new('directory[title, file_path, description]/file(name, ' + \
+    dx = DxLite.new('directory[title, file_path, description]/file(name, ' + \
             'type, ext, ctime, mtime, atime, description, owner, ' + \
-                                        'group, permissions)', json_out: false)
+                                        'group, permissions)')
 
     dx.title = 'Index of ' + File.expand_path(@path)
     dx.file_path = File.expand_path(@path)
@@ -179,14 +181,18 @@ class DirToXML
 
   def refresh(cur_files)
 
-    dx = Dynarex.new(File.join(@path, @index), json_out: false)
+    puts 'inside refresh' if @debug
+    dx = DxLite.new(File.join(@path, @index), debug: @debug)
 
     prev_files = dx.to_a
+    
+    #puts 'prev_files: ' + prev_files.inspect
+    #puts 'cur_files: ' + cur_files.inspect
             
     cur_files.each do |x|
 
       file = prev_files.find {|item| item[:name] == x[:name] }
-
+      #puts 'found : ' + file.inspect if @debug
       x[:description] = file[:description] if file and file[:description]
     end
 
