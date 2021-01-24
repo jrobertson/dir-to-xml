@@ -15,6 +15,8 @@ class DirToXML
     
     @debug = debug
     
+    @dx = nil
+    
     if x.is_a? DxLite then
       
       @dx = x      
@@ -29,12 +31,20 @@ class DirToXML
     @path, @index, @recursive = path, index, recursive
     
     raise "Directory not found." unless File.exists? path
+    filepath = File.join(path, index)
     
-    @dx = DxLite.new(File.join(@path, @index), debug: @debug)
+    
+    if File.exists? filepath then
+    
+      @dx = DxLite.new(File.join(@path, @index), debug: @debug)
+    
+    end
 
     # has the directory been modified since last time?
     #
-    if @dx.respond_to? :last_modified and @dx.last_modified.length > 0 then
+    if @dx and @dx.respond_to? :last_modified and \
+        @dx.last_modified.length > 0 then
+      
       return if Time.parse(@dx.last_modified) >= \
           File.mtime(File.expand_path(path))
     end
@@ -64,7 +74,8 @@ class DirToXML
 
     end    
     
-    if @dx.respond_to? :last_modified and @dx.last_modified.length > 0 then
+    if @dx and @dx.respond_to? :last_modified \
+        and @dx.last_modified.length > 0 then
       
       t = Time.parse(@dx.last_modified)
       
