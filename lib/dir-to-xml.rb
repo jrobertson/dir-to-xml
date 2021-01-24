@@ -7,7 +7,7 @@ require 'dxlite'
 
 class DirToXML
 
-  attr_reader :dx
+  attr_reader :dx, :activity
   
   def initialize(x= '.', recursive: false, index: 'dir.xml', debug: false)
     
@@ -29,9 +29,20 @@ class DirToXML
     @path, @index, @recursive = path, index, recursive
     
     raise "Directory not found." unless File.exists? path
+    
+    @dx = DxLite.new(File.join(@path, @index), debug: @debug)
 
+    # has the directory been modified since last time?
+    #
+    if @dx.respond_to? :last_modified and @dx.last_modified.length > 0 then
+      return if Time.parse(@dx.last_modified) >= \
+          File.mtime(File.expand_path(path))
+    end
+    
+    puts 'before Dir.glob' if @debug
+    
     a = Dir.glob(File.join(path, "*")).map{|x| File.basename(x) }.sort
-
+        
     a.delete index
 
     a2 = a.inject([]) do |r, filename|
@@ -52,6 +63,23 @@ class DirToXML
       end
 
     end    
+    
+    if @dx.respond_to? :last_modified and @dx.last_modified.length > 0 then
+      
+      t = Time.parse(@dx.last_modified)
+      
+      # find the most recently modified cur_files
+      recent = a2.select {|x| x[:mtime] > t }.map {|x| x[:name]} \
+          - %w(dir.xml dir.json)
+      
+      # is it a new file or recently modified?
+      new_files = recent - @dx.to_a.map {|x| x[:name]}
+      modified = recent - new_files
+      
+      @activity = {modified: modified, new: new_files}
+      
+    end
+      
 
     command = File.exists?(File.join(path, index)) ? :refresh : :dxify
 
@@ -164,13 +192,14 @@ class DirToXML
       
   def dxify(a)
     
-    dx = DxLite.new('directory[title, file_path, description]/file(name, ' + \
+    dx = DxLite.new('directory[title, file_path, last_modified, description]/file(name, ' + \
             'type, ext, ctime, mtime, atime, description, owner, ' + \
                                         'group, permissions)')
 
     dx.title = 'Index of ' + File.expand_path(@path)
     dx.file_path = File.expand_path(@path)
-
+    dx.last_modified = Time.now.to_s
+    
     dx.import a
 
     dx.save File.join(@path, @index)
@@ -182,9 +211,9 @@ class DirToXML
   def refresh(cur_files)
 
     puts 'inside refresh' if @debug
-    dx = DxLite.new(File.join(@path, @index), debug: @debug)
+    
 
-    prev_files = dx.to_a
+    prev_files = @dx.to_a
     
     #puts 'prev_files: ' + prev_files.inspect
     #puts 'cur_files: ' + cur_files.inspect
