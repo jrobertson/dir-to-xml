@@ -16,6 +16,7 @@ class DirToXML
     @debug = debug
     
     @dx = nil
+    @activity = {new: [], modified: []}
     
     if x.is_a? DxLite then
       
@@ -41,7 +42,7 @@ class DirToXML
     else
       
       @dx = DxLite.new('directory[title, file_path, last_modified, ' + \
-              'description]/fi`le(name, type, ext, ctime, mtime, atime, ' + \
+              'description]/file(name, type, ext, ctime, mtime, atime, ' + \
               'description, owner, group, permissions)')
 
       puts 'before title' if @debug
@@ -84,24 +85,33 @@ class DirToXML
       puts 'nothing to do' if @debug
       
       file = a2.max_by {|x| x[:mtime]}
+      puts 'file: ' + file.inspect if @debug
       return if Time.parse(@dx.last_modified) >= (file[:mtime])
       
     end    
     
 
     
-    if @dx and @dx.respond_to? :last_modified \
-        and @dx.last_modified.length > 0 then
+    if @dx and @dx.respond_to? :last_modified  then
       
-      t = Time.parse(@dx.last_modified)
+      if @dx.last_modified.length > 0 then
       
-      # find the most recently modified cur_files
-      recent = a2.select {|x| x[:mtime] > t }.map {|x| x[:name]} \
-          - %w(dir.xml dir.json)
-      
-      # is it a new file or recently modified?
-      new_files = recent - @dx.to_a.map {|x| x[:name]}
-      modified = recent - new_files
+        t = Time.parse(@dx.last_modified)
+        
+        # find the most recently modified cur_files
+        recent = a2.select {|x| x[:mtime] > t }.map {|x| x[:name]} \
+            - %w(dir.xml dir.json)
+        
+        # is it a new file or recently modified?
+        new_files = recent - @dx.to_a.map {|x| x[:name]}
+        modified = recent - new_files
+        
+      else
+        
+        new_files = a2.select {|x| x[:type] == 'file'}.map {|x| x[:name]}
+        modified = []
+        
+      end
       
       @activity = {modified: modified, new: new_files}
       
