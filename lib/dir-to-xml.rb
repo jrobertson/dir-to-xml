@@ -37,17 +37,19 @@ class DirToXML
     if File.exists? filepath then
     
       @dx = DxLite.new(File.join(@path, @index), debug: @debug)
-    
-    end
-
-    # has the directory been modified since last time?
-    #
-    if @dx and @dx.respond_to? :last_modified and \
-        @dx.last_modified.length > 0 then
       
-      return if Time.parse(@dx.last_modified) >= \
-          File.mtime(File.expand_path(path))
-    end
+    else
+      
+      @dx = DxLite.new('directory[title, file_path, last_modified, ' + \
+              'description]/fi`le(name, type, ext, ctime, mtime, atime, ' + \
+              'description, owner, group, permissions)')
+
+      puts 'before title' if @debug
+      @dx.title = 'Index of ' + File.expand_path(@path)
+      @dx.file_path = File.expand_path(@path)
+      @dx.last_modified = ''
+    
+    end        
     
     puts 'before Dir.glob' if @debug
     
@@ -74,6 +76,20 @@ class DirToXML
 
     end    
     
+    # has the directory been modified since last time?
+    #
+    if @dx and @dx.respond_to? :last_modified and \
+        @dx.last_modified.length > 0 then
+      
+      puts 'nothing to do' if @debug
+      
+      file = a2.max_by {|x| x[:mtime]}
+      return if Time.parse(@dx.last_modified) >= (file[:mtime])
+      
+    end    
+    
+
+    
     if @dx and @dx.respond_to? :last_modified \
         and @dx.last_modified.length > 0 then
       
@@ -94,7 +110,10 @@ class DirToXML
 
     command = File.exists?(File.join(path, index)) ? :refresh : :dxify
 
-    @dx  = self.method(command).call a2
+    self.method(command).call a2
+    puts '@dx: ' + @dx.inspect if @debug
+    puts '@dx.last_modified: ' + @dx.last_modified.inspect if @debug
+    
     
     @a = @dx.to_a    
     
@@ -203,26 +222,15 @@ class DirToXML
       
   def dxify(a)
     
-    dx = DxLite.new('directory[title, file_path, last_modified, description]/file(name, ' + \
-            'type, ext, ctime, mtime, atime, description, owner, ' + \
-                                        'group, permissions)')
-
-    dx.title = 'Index of ' + File.expand_path(@path)
-    dx.file_path = File.expand_path(@path)
-    dx.last_modified = Time.now.to_s
-    
-    dx.import a
-
-    dx.save File.join(@path, @index)
-
-    return dx
+    @dx.last_modified = Time.now.to_s  
+    @dx.import a
+    @dx.save File.join(@path, @index)
 
   end
 
   def refresh(cur_files)
 
-    puts 'inside refresh' if @debug
-    
+    puts 'inside refresh' if @debug    
 
     prev_files = @dx.to_a
     
