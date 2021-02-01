@@ -199,9 +199,15 @@ class DirToXML
   end
   
   def sort_by(sym)
+    
+    puts 'inside sort_by' if @debug
     procs = [[:mtime, lambda{|obj| obj.sort_by{|x| x[:mtime]}}]]
     proc1 = procs.assoc(sym).last
+    
+    puts '@object: ' + @object.inspect if @debug
+    @object = @a = @dx.to_a if @object.nil?
     proc1.call(@object)
+    
   end
   
   def sort_by_last_modified()
@@ -232,7 +238,7 @@ class DirToXML
       
   def dxify(a)
     
-    @dx.last_modified = Time.now.to_s  
+    @dx.last_modified = Time.now.to_s  if @dx.respond_to :last_modified
     @dx.import a
     @dx.save File.join(@path, @index)
 
