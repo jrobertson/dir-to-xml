@@ -85,12 +85,18 @@ class DirToXML
       puts 'nothing to do' if @debug
       
       file = a2.max_by {|x| x[:mtime]}
-      puts 'file: ' + file.inspect if @debug
-      return if Time.parse(@dx.last_modified) >= (file[:mtime])
+      
+      if @debug then
+        puts 'file: ' + file.inspect 
+        puts 'd1: '  + Time.parse(@dx.last_modified).inspect
+        puts 'd2: ' + (file[:mtime]).inspect
+      end
+      
+      return if Time.parse(@dx.last_modified) >= file[:mtime]
       
     end    
     
-
+    puts 'stage 2'
     
     if @dx and @dx.respond_to? :last_modified  then
       
@@ -99,7 +105,7 @@ class DirToXML
         t = Time.parse(@dx.last_modified)
         
         # find the most recently modified cur_files
-        recent = a2.select {|x| x[:mtime] > t }.map {|x| x[:name]} \
+        recent = a2.select {|x| Time.parse(x[:mtime]) > t }.map {|x| x[:name]} \
             - %w(dir.xml dir.json)
         
         # is it a new file or recently modified?
@@ -238,7 +244,7 @@ class DirToXML
       
   def dxify(a)
     
-    @dx.last_modified = Time.now.to_s  if @dx.respond_to :last_modified
+    @dx.last_modified = Time.now.to_s  if @dx.respond_to? :last_modified
     @dx.import a
     @dx.save File.join(@path, @index)
 
