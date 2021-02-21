@@ -105,7 +105,7 @@ class DirToXML
         t = Time.parse(@dx.last_modified)
         
         # find the most recently modified cur_files
-        recent = a2.select {|x| Time.parse(x[:mtime]) > t }.map {|x| x[:name]} \
+        recent = a2.select {|x| x[:mtime] > t }.map {|x| x[:name]} \
             - %w(dir.xml dir.json)
         
         # is it a new file or recently modified?
@@ -195,6 +195,8 @@ class DirToXML
   
   def select_by_ext(ext, &blk)
     
+    @a = @dx.to_a unless @a
+    
     @object = ext != '*' ? @a.select{|x| x[:ext][/#{ext}$/]} : @a
     return if @object.empty?
     
@@ -207,7 +209,7 @@ class DirToXML
   def sort_by(sym)
     
     puts 'inside sort_by' if @debug
-    procs = [[:mtime, lambda{|obj| obj.sort_by{|x| x[:mtime]}}]]
+    procs = [[:mtime, lambda{|obj| obj.sort_by{|x| Time.parse(x[:mtime])}}]]
     proc1 = procs.assoc(sym).last
     
     puts '@object: ' + @object.inspect if @debug
