@@ -2,308 +2,259 @@
 
 # file: dir-to-xml.rb
 
+require 'c32'
 require 'dxlite'
 
 
+# How dir-to-xml should work
+#
+# if the dir.xml file doesn't exist then
+#
+#   generate the dir.xml file
+#
+# else
+#
+#   # the dir.xml file does exist
+#
+#   # check for one of the following:
+#   #  1 or more new files
+#   #  1 or more removed files
+#   #  1 or more modified files
+#
+# note: Ideally The index needs to be stored and retrieved the fastest way possible.
+#       This is why it's saved as a .json file rather .xml
+#
+# tested:
+# * finding the latest file in the current directory
+# * finding the latest file in a sub-directory (using recursive: true)
+
+
 class DirToXML
+  using ColouredText
 
-  attr_reader :dx, :activity
+  attr_reader :new_files, :deleted_files, :dx, :latest_files, :latest_file
 
-  def initialize(x= '.', recursive: false, index: 'dir.xml', debug: false)
+  def initialize(obj= '.', index: 'dir.json', recursive: false,
+                 verbose: true, debug: false)
 
-    super()
-
-    @debug = debug
-
-    @dx = nil
-    @activity = {new: [], modified: []}
-
-    if x.is_a? DxLite then
-
-      @dx = x
-      @a = @dx.to_a
-      @object = @a
-
-      return self
+    if verbose then
+      puts
+      puts 'DirToXML at your service!'.highlight
+      puts
+      puts
     end
 
-    path = x
+    @index, @recursive, @verbose, @debug = index, recursive, verbose, debug
 
-    @path, @index, @recursive = path, index, recursive
+    if File.basename(obj) == index then
 
-    raise "Directory not found." unless File.exists? path
-    filepath = File.join(path, index)
+      #read the index file
+      @path = File.dirname(obj)
+      puts 'intialize() @path: ' + @path.inspect if @debug
 
-
-    if File.exists? filepath then
-
-      @dx = DxLite.new(File.join(@path, @index), debug: @debug)
+      @dx = read(obj)
 
     else
+      @path = obj
+      puts 'intialize() @path: ' + @path.inspect if @debug
 
-      @dx = DxLite.new('directory[title, file_path, last_modified, ' + \
-              'description]/file(name, type, ext, ctime, mtime, atime, ' + \
-              'description, owner, group, permissions)')
-
-      puts 'before title' if @debug
-      @dx.title = 'Index of ' + File.expand_path(@path)
-      @dx.file_path = File.expand_path(@path)
-      @dx.last_modified = ''
-
+      new_scan()
     end
-
-    if @debug then
-      puts 'before Dir.glob'
-      puts '_path: ' + File.join(path, "*").inspect
-    end
-
-    a = Dir.glob(File.join(path, "*")).map{|x| File.basename(x) }.sort
-    puts 'a: ' + a.inspect if @debug
-
-    a.delete index
-
-    return if a.empty?
-
-    a2 = a.inject([]) do |r, filename|
-
-      x = File.join(path, filename)
-
-      begin
-      r << {
-        name: filename,
-        type: File::ftype(x),
-        ext: File.extname(x),
-        ctime: File::ctime(x),
-        mtime: File::mtime(x),
-        atime: File::atime(x)
-      }
-      rescue
-        r
-      end
-
-    end
-
-    # has the directory been modified since last time?
-    #
-    if @dx and @dx.respond_to? :last_modified and \
-        @dx.last_modified.length > 0 then
-
-      puts 'nothing to do' if @debug
-      puts 'a2: ' + a2.inspect if @debug
-      file = a2.max_by {|x| x[:mtime]}
-
-      if @debug then
-        puts 'file: ' + file.inspect
-        puts 'd1: '  + Time.parse(@dx.last_modified).inspect
-        puts 'd2: ' + (file[:mtime]).inspect
-      end
-
-      if Time.parse(@dx.last_modified) >= file[:mtime] then
-        @a = @dx.to_a
-        return
-      end
-
-    end
-
-    puts 'stage 2' if @debug
-
-    if @dx and @dx.respond_to? :last_modified  then
-
-      if @dx.last_modified.length > 0 then
-
-        t = Time.parse(@dx.last_modified)
-
-        # find the most recently modified cur_files
-        recent = a2.select {|x| x[:mtime] > t }.map {|x| x[:name]} \
-            - %w(dir.xml dir.json)
-
-        # is it a new file or recently modified?
-        new_files = recent - @dx.to_a.map {|x| x[:name]}
-        modified = recent - new_files
-
-      else
-
-        new_files = a2.select {|x| x[:type] == 'file'}.map {|x| x[:name]}
-        modified = []
-
-      end
-
-      @activity = {modified: modified, new: new_files}
-
-    end
-
-
-    command = File.exists?(File.join(path, index)) ? :refresh : :dxify
-
-    self.method(command).call a2
-    puts '@dx: ' + @dx.inspect if @debug
-    puts '@dx.last_modified: ' + @dx.last_modified.inspect if @debug
-
-
-    @a = @dx.to_a
-
-    if recursive then
-
-      self.filter_by(type: :directory).to_a.each do |x|
-
-        path2 = File.join(path, x[:name])
-        DirToXML.new(path2, recursive: true)
-      end
-    end
-
-    @object = @a
 
   end
 
-  def directories(&blk)
-
-    self.to_dx.all.select {|x| x.type == 'directory'}.map(&:name)
-
+  def activity()
+    {
+      new: @new_files,
+      deleted: @deleted_files,
+      modified: @latest_files
+    }
   end
 
-  def filter(&blk)
-    @dx.filter &blk
-  end
+  alias changes activity
 
-  def filter_by(pattern=/.*/, type: nil, ext: nil, &blk)
-
-    @object = @a.select do |x|
-
-      puts '_x: ' + x.inspect if @debug
-      pattern_match = x[:name] =~ pattern
-
-      type_match = type ? x[:type] == type.to_s : true
-      ext_match = ext ? x[:ext] == ext.to_s : true
-
-      pattern_match and type_match and ext_match
-
-    end
-
-    return if @object.empty?
-
-    @dx = DxLite.new
-    @dx.import @object
-
-    block_given? ? @dx.all.map(&:name).each(&blk) : self
-
+  def directories()
+    @dx.all.select {|x| x.type == 'directory'}.map(&:name)
   end
 
   def find_all_by_ext(s)
-    @dx.all.select {|item| item.ext == s}
+    @dx.find_all_by_ext(s)
   end
 
   def find_by_filename(s)
-    @dx.all.find {|item| item.name == s}
+    @dx.find_by_filename(s)
   end
 
-  alias find_by_file find_by_filename
+  def latest()
 
-  def last_modified(ext=nil)
-
-    if ext and ext != '*' then
-      @object = @a.select{|x| x[:ext][/#{ext}/] or x[:type] == 'directory'}
+    if @latest_file then
+      File.join(@latest_file[:path], @latest_file[:name])
     end
 
-    a = sort_by :mtime
-
-    lm =  a[-1]
-
-    if @recursive and lm[:type] == 'directory' then
-      return [lm, DirToXML.new(File.join(@path,  lm[:name])).last_modified]
-    else
-      lm
-    end
   end
 
-  def save()
-    @dx.save File.join(@path, @index)
-  end
+  def new_scan()
 
-  def select_by_ext(ext, &blk)
+    t = Time.now
+    records = scan_dir @path
+    puts 'new_scan() records: ' + records.inspect if @debug
 
-    @a = @dx.to_a unless @a
+    a = records.map {|x| x[:name]}
 
-    @object = ext != '*' ? @a.select{|x| x[:ext][/#{ext}$/]} : @a
-    return if @object.empty?
+    if File.exists? File.join(@path, @index) then
 
-    dx = DxLite.new
-    dx.import @object
-    dtx = DirToXML.new(dx)
-    block_given? ? dtx.dx.all.map(&:name).each(&blk) : dtx
-  end
+      @dx = read()
 
-  def sort_by(sym)
+      old_records = @dx.to_a
+      a2 = old_records.map {|x| x[:name]}
 
-    puts 'inside sort_by' if @debug
-    procs = [
-      [
-        :mtime,
-        lambda do |obj|
-          obj.sort_by do |x|
-            x[:mtime].is_a?(String) ? Time.parse(x[:mtime]) : x[:mtime]
-          end
+      # delete any old files
+      #
+      @deleted_files = a2 - a
+
+      if @deleted_files.any? then
+
+        @deleted_files.each do |filename|
+          record = @dx.find_by_name filename
+          record.delete if record
         end
-      ]
-    ]
-    proc1 = procs.assoc(sym).last
 
-    puts '@object: ' + @object.inspect if @debug
-    @object = @a = @dx.to_a if @object.nil?
-    proc1.call(@object)
+      end
+
+      # check for newly modified files
+      # compare the file date with index file last modified date
+      #
+      dtx_last_modified = Time.parse(@dx.last_modified)
+
+      select_records = records.select do |file|
+        file[:mtime] > dtx_last_modified
+      end
+
+      find_latest(select_records)
+
+      # Add any new files
+      #
+      @new_files = a - a2
+
+      if @new_files.any? then
+
+        @dx.last_modified = Time.now.to_s
+        @dx.import @new_files.map {|filename| getfile_info(filename) }
+
+      end
+
+      @dx.last_modified = Time.now.to_s if @deleted_files.any?
+
+    else
+
+      @dx = new_index(records)
+      find_latest(records)
+
+    end
+
+    t2 = Time.now - t
+    puts ("directory scanned in %.2f seconds" % t2).info if @verbose
 
   end
 
-  def sort_by_last_modified()
-    sort_by :mtime
+  def read(index=@index)
+
+    t = Time.now
+    puts 'read path: ' + File.join(@path, index).inspect if @Debug
+
+    dx = DxLite.new(File.join(@path, index), autosave: true)
+
+    t2 = Time.now - t
+    puts ("%s read in %.2f seconds" % [@index, t2]).info if @verbose
+
+    return dx
+
   end
-
-  alias sort_by_lastmodified sort_by_last_modified
-
-  def to_a
-    @object || @a
-  end
-
-  def to_h()
-    self.to_a.inject({}){|r,x| r.merge(x[:name] => x)}
-  end
-
-  def to_xml(options=nil)
-    @dx.to_xml options
-  end
-
-  def to_dynarex
-    @dx.clone
-  end
-
-  alias to_dx to_dynarex
 
   private
 
-  def dxify(a)
+  def find_latest(files)
 
-    @dx.last_modified = Time.now.to_s  if @dx.respond_to? :last_modified
-    @dx.import a
-    @dx.save File.join(@path, @index)
+    @latest_files = files.sort_by {|file| file[:mtime]}
+    puts '@latest_files:  ' + @latest_files.inspect if @debug
+
+    @latest_file = @latest_files[-1]
+    puts ':@latest_file: ' + @latest_file.inspect if @debug
+
+    dir_list = directories()
+
+    if dir_list.any? then
+
+      dir_latest = dir_list.map do |dir|
+
+        puts 'dir: ' + dir.inspect if @debug
+        dtx2 = DirToXML.new(File.join(@path, dir), index: @index,
+                            recursive: true, verbose: false, debug: @debug)
+        [dir, dtx2.latest_file]
+
+      end.reject {|_,latest|  latest.nil? }.sort_by {|_, x| x[:mtime]}.last
+
+      puts 'dir_latest: ' + dir_latest.inspect if @debug
+
+      @latest_file = if dir_latest and \
+                          ((dir_latest.last[:mtime] > latest_file[:mtime]) \
+                                     or latest_file.nil? \
+                                     or latest_file[:type] == 'directory') then
+
+        dir_latest.last[:path] = File.join(@path, dir_latest.first)
+        dir_latest.last
+
+      elsif latest_file and latest_file[:type] == 'file'
+
+        latest_file[:path] = @path
+        latest_file
+
+      end
+
+    else
+      return
+    end
 
   end
 
-  def refresh(cur_files)
+  def getfile_info(filename)
 
-    puts 'inside refresh' if @debug
+    x = File.join(@path, filename)
+    puts 'x: ' + x.inspect if @debug
 
-    prev_files = @dx.to_a
-
-    #puts 'prev_files: ' + prev_files.inspect
-    #puts 'cur_files: ' + cur_files.inspect
-
-    cur_files.each do |x|
-
-      file = prev_files.find {|item| item[:name] == x[:name] }
-      #puts 'found : ' + file.inspect if @debug
-      x[:description] = file[:description] if file and file[:description]
+    begin
+      {
+        name: filename,
+        type: File::ftype(x),
+        ext: File.extname(x),
+        mtime: File::mtime(x),
+        description: ''
+      }
     end
+  end
 
-    dxify(cur_files)
+  def new_index(records)
+
+    dx = DxLite.new('directory[title, file_path,  ' +
+                      'last_modified, description]/file(name, ' +
+                                    'type, ext, mtime, description)')
+
+    puts 'before title' if @debug
+    dx.title = 'Index of ' + @path
+    dx.file_path = @path
+    dx.last_modified = Time.now
+    dx.import records.reverse
+    dx.save File.join(@path, @index)
+
+    return dx
+
+  end
+
+  def scan_dir(path)
+
+    a = Dir.glob(File.join(path, "*")).map {|x| File.basename(x) }
+    a.delete @index
+    a.map {|filename| getfile_info(filename) }
 
   end
 
