@@ -127,10 +127,13 @@ class DirToXML
       dtx_last_modified = Time.parse(@dx.last_modified)
 
       select_records = records.select do |file|
-        file[:mtime] > dtx_last_modified
+
+        file[:mtime] > dtx_last_modified or file[:type] == 'directory'
+
       end
 
-      find_latest(select_records)
+      puts 'select_records: ' + select_records.inspect if @debug
+      find_latest(select_records) if select_records.any?
 
       # Add any new files
       #
@@ -202,12 +205,12 @@ class DirToXML
                                      or latest_file.nil? \
                                      or latest_file[:type] == 'directory') then
 
-        dir_latest.last[:path] = File.join(@path, dir_latest.first)
+        dir_latest.last[:path] = File.expand_path(File.join(@path, dir_latest.first))
         dir_latest.last
 
       elsif latest_file and latest_file[:type] == 'file'
 
-        latest_file[:path] = @path
+        latest_file[:path] = File.expand_path(@path)
         latest_file
 
       end
