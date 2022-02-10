@@ -179,6 +179,7 @@ class DirToXML
     puts '@latest_files:  ' + @latest_files.inspect if @debug
 
     @latest_file = @latest_files[-1]
+    @latest_file[:path] = @path
     puts ':@latest_file: ' + @latest_file.inspect if @debug
 
     dir_list = directories()
