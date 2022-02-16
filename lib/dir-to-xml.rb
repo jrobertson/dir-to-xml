@@ -31,6 +31,7 @@ require 'dxlite'
 
 class DirToXML
   using ColouredText
+  include RXFHelperModule
 
   attr_reader :new_files, :deleted_files, :dx, :latest_files, :latest_file
 
@@ -101,7 +102,7 @@ class DirToXML
 
     a = records.map {|x| x[:name]}
 
-    if File.exists? File.join(@path, @index) then
+    if FileX.exists? File.join(@path, @index) then
 
       @dx = read()
 
@@ -256,7 +257,7 @@ class DirToXML
 
   def scan_dir(path)
 
-    a = Dir.glob(File.join(path, "*")).map {|x| File.basename(x) }
+    a = DirX.glob(File.join(path, "*")).map {|x| File.basename(x) }
     a.delete @index
     a.map {|filename| getfile_info(filename) }
 
