@@ -31,7 +31,7 @@ require 'dxlite'
 
 class DirToXML
   using ColouredText
-  include RXFHelperModule
+  include RXFReadWriteModule
 
   attr_reader :new_files, :deleted_files, :dx, :latest_files, :latest_file
 
