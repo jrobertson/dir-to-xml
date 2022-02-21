@@ -75,7 +75,11 @@ class DirToXML
   alias changes activity
 
   def directories()
-    @dx.all.select {|x| x.type == 'directory'}.map(&:name)
+
+    a = @dx.all
+    puts 'inside directories() a: ' + a.inspect if @debug
+    a.select {|x| x.type == 'directory'}.map(&:name)
+
   end
 
   def find_all_by_ext(s)
@@ -97,8 +101,9 @@ class DirToXML
   def new_scan()
 
     t = Time.now
+    puts '_new_scan() @path: ' + @path.inspect if @debug
     records = scan_dir @path
-    puts 'new_scan() records: ' + records.inspect if @debug
+    puts '_new_scan() records: ' + records.inspect if @debug
 
     a = records.map {|x| x[:name]}
 
@@ -122,32 +127,39 @@ class DirToXML
 
       end
 
-      # check for newly modified files
-      # compare the file date with index file last modified date
-      #
-      dtx_last_modified = Time.parse(@dx.last_modified)
-
-      select_records = records.select do |file|
-
-        file[:mtime] > dtx_last_modified or file[:type] == 'directory'
-
-      end
-
-      puts 'select_records: ' + select_records.inspect if @debug
-      find_latest(select_records) if select_records.any?
-
       # Add any new files
       #
       @new_files = a - a2
 
       if @new_files.any? then
-
-        @dx.last_modified = Time.now.to_s
         @dx.import @new_files.map {|filename| getfile_info(filename) }
-
       end
 
-      @dx.last_modified = Time.now.to_s if @deleted_files.any?
+      if (@deleted_files +  @new_files).any? then
+
+        @dx.last_modified = Time.now.to_s
+        @dx.save
+
+        new_scan()
+
+      else
+
+        # check for newly modified files
+        # compare the file date with index file last modified date
+        #
+        dtx_last_modified = Time.parse(@dx.last_modified)
+
+        select_records = records.select do |file|
+
+          file[:mtime] > dtx_last_modified or file[:type] == 'directory'
+
+        end
+
+        puts 'select_records: ' + select_records.inspect if @debug
+
+        find_latest(select_records) if select_records.any?
+      end
+
 
     else
 
@@ -166,7 +178,7 @@ class DirToXML
     t = Time.now
     puts 'read path: ' + File.join(@path, index).inspect if @Debug
 
-    dx = DxLite.new(File.join(@path, index), autosave: true)
+    dx = DxLite.new(File.join(@path, index), autosave: false)
 
     t2 = Time.now - t
     puts ("%s read in %.2f seconds" % [@index, t2]).info if @verbose
@@ -186,7 +198,9 @@ class DirToXML
     @latest_file[:path] = @path
     puts ':@latest_file: ' + @latest_file.inspect if @debug
 
+    puts 'before directories()' if @debug
     dir_list = directories()
+    puts 'dir_list: ' + dir_list.inspect if @debug
 
     if dir_list.any? then
 
