@@ -164,7 +164,7 @@ class DirToXML
     else
 
       @dx = new_index(records)
-      find_latest(records)
+      find_latest(records) if records.any?
 
     end
 
@@ -198,6 +198,8 @@ class DirToXML
     @latest_file[:path] = @path
     puts ':@latest_file: ' + @latest_file.inspect if @debug
 
+    return unless @recursive
+
     puts 'before directories()' if @debug
     dir_list = directories()
     puts 'dir_list: ' + dir_list.inspect if @debug
@@ -208,7 +210,7 @@ class DirToXML
 
         puts 'dir: ' + dir.inspect if @debug
         dtx2 = DirToXML.new(File.join(@path, dir), index: @index,
-                            recursive: true, verbose: false, debug: @debug)
+                            recursive: @recursive, verbose: false, debug: @debug)
         [dir, dtx2.latest_file]
 
       end.reject {|_,latest|  latest.nil? }.sort_by {|_, x| x[:mtime]}.last
@@ -262,7 +264,7 @@ class DirToXML
     dx.title = 'Index of ' + @path
     dx.file_path = @path
     dx.last_modified = Time.now
-    dx.import records.reverse
+    dx.import records.reverse if records.any?
     dx.save File.join(@path, @index)
 
     return dx
