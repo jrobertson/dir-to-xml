@@ -74,11 +74,33 @@ class DirToXML
 
   alias changes activity
 
-  def directories()
+  # Returns a list of directory names
+  #
+  # note: if recursive is true then it will return a 1-dimensional Array 
+  #       object containing all directory paths including nested directories
+  #
+  def directories(recursive: false)
 
     a = @dx.all
     puts 'inside directories() a: ' + a.inspect if @debug
-    a.select {|x| x.type == 'directory'}.map(&:name)
+    
+    if recursive then
+
+      directories.flat_map do |dir_name|
+        
+        #puts 'dir_name: ' + dir_name.inspect
+        #puts 'path+dir: ' + File.join(@path, dir_name).inspect
+        dtx = DirToXML.new(File.join(@path, dir_name), verbose: false, debug: false)
+        list = dtx.directories(recursive: true)
+        r = [File.join(@path, dir_name)]
+        r.concat list if list.any?
+        
+        r
+      end
+      
+    else
+      a.select {|x| x.type == 'directory'}.map(&:name)
+    end
 
   end
 
@@ -107,7 +129,7 @@ class DirToXML
 
     a = records.map {|x| x[:name]}
 
-    if FileX.exists? File.join(@path, @index) then
+    if FileX.exist? File.join(@path, @index) then
 
       @dx = read()
 
