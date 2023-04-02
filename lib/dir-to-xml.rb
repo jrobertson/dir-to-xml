@@ -53,7 +53,7 @@ class DirToXML
       @path = File.dirname(obj)
       puts 'intialize() @path: ' + @path.inspect if @debug
 
-      @dx = read(obj)
+      @dx = read(index)
 
     else
       @path = obj
@@ -198,7 +198,7 @@ class DirToXML
   def read(index=@index)
 
     t = Time.now
-    puts 'read path: ' + File.join(@path, index).inspect if @Debug
+    puts 'read path: ' + File.join(@path, index).inspect if @debug
 
     dx = DxLite.new(File.join(@path, index), autosave: false)
 
