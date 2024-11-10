@@ -76,28 +76,28 @@ class DirToXML
 
   # Returns a list of directory names
   #
-  # note: if recursive is true then it will return a 1-dimensional Array 
+  # note: if recursive is true then it will return a 1-dimensional Array
   #       object containing all directory paths including nested directories
   #
   def directories(recursive: false)
 
     a = @dx.all
     puts 'inside directories() a: ' + a.inspect if @debug
-    
+
     if recursive then
 
       directories.flat_map do |dir_name|
-        
+
         #puts 'dir_name: ' + dir_name.inspect
         #puts 'path+dir: ' + File.join(@path, dir_name).inspect
         dtx = DirToXML.new(File.join(@path, dir_name), verbose: false, debug: false)
         list = dtx.directories(recursive: true)
         r = [File.join(@path, dir_name)]
         r.concat list if list.any?
-        
+
         r
       end
-      
+
     else
       a.select {|x| x.type == 'directory'}.map(&:name)
     end
@@ -263,14 +263,14 @@ class DirToXML
   def getfile_info(filename)
 
     x = File.join(@path, filename)
-    puts 'x: ' + x.inspect if @debug
+    puts '_x: ' + x.inspect if @debug
 
     begin
       {
         name: filename,
-        type: File::ftype(x),
-        ext: File.extname(x),
-        mtime: File::mtime(x),
+        type: FileX.ftype(x),
+        ext: FileX.extname(x),
+        mtime: FileX.mtime(x),
         description: ''
       }
     end
